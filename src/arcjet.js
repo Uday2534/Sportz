@@ -4,7 +4,12 @@ const arcjetKey=process.env.ARCJET_KEY
 const arcjetMode=process.env.ARCJET_MODE=== 'DRY_RUN' ? 'DRY_RUN' : 'LIVE';
 const isProd = process.env.NODE_ENV === "production";
 
-if(!arcjetKey) throw new Error('ARCJET_KEY is missing');
+if(!arcjetKey){
+    if(isProd){
+        throw new Error('ARCJET_KEY is missing');
+    }
+    console.warn('ARCJET_KEY is missing. Security middleware is disabled.');
+}
 
 export const httpArcjet=arcjetKey ?
     arcjet({
@@ -61,7 +66,7 @@ export function securityMiddleware(){
 
         }
         catch(err){
-            console.error('Arcjet mIddleware error',err)
+            console.error('Arcjet middleware error',err)
             return res.status(503).json({error:'Service Unavailable'})
         }
         next();
