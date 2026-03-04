@@ -55,20 +55,23 @@ function handleMessage(socket,data){
         
     }
     catch(err){
-        sendJson(socket,{typr:'error',message:'Invalid Json'});
+        sendJson(socket,{type:'error',message:'Invalid JSON'});
+        return;
     }
-    if(message?.tyoe==="subscribe" && Number.isInteger(message.matchId)){
+    if(message?.type==="subscribe" && Number.isInteger(message.matchId)){
         subscribe(message.matchId,socket)
-        socket.subscriptions.add(message,matchId)
+        socket.subscriptions.add(message.matchId)
         sendJson(socket,{type:'subscribed',matchId:message.matchId})
         return;
     }
-    if(message?.tyoe==="unsubscribe" && Number.isInteger(message.matchId)){
+    if(message?.type==="unsubscribe" && Number.isInteger(message.matchId)){
         unsubscribe(message.matchId,socket)
-        socket.subscriptions.delete(message,matchId)
+        socket.subscriptions.delete(message.matchId)
         sendJson(socket,{type:'unsubscribed',matchId:message.matchId})
         return;
     }
+
+    sendJson(socket,{type:'error',message:'Unsupported message'});
 }
 
 export function attachWebSocketServer(server) {
@@ -78,6 +81,8 @@ export function attachWebSocketServer(server) {
         const { pathname } = new URL(req.url, `http://${req.headers.host}`);
 
         if (pathname !== '/ws') {
+            socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+            socket.destroy();
             return;
         }
 
@@ -119,15 +124,14 @@ export function attachWebSocketServer(server) {
             handleMessage(socket, data);
         });
 
-        socket.on('error', () => {
-            socket.terminate();
-        });
-
         socket.on('close', () => {
             cleanupSubscribers(socket);
         })
 
-        socket.on('error', console.error);
+        socket.on('error', (err) => {
+            console.error('WebSocket error', err);
+            socket.terminate();
+        });
     });
 
     const interval = setInterval(() => {
